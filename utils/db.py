@@ -20,7 +20,7 @@ def get_db_connection():
         print(f"[INFO] Connecting to MongoDB database: {Config.DB_NAME}...")
         
         # Check if user is still using placeholder URI
-        if "<username>" in Config.MONGO_URI or "cluster0.mongodb.net" in Config.MONGO_URI:
+        if "<username>" in Config.MONGO_URI or "YOUR_PASSWORD_HERE" in Config.MONGO_URI:
             print("\n" + "="*70)
             print("[NOTICE] You are currently using the default placeholder MONGO_URI in .env.")
             print("Please update your MONGO_URI in the .env file with your actual MongoDB Atlas cluster connection string.")
@@ -43,11 +43,12 @@ def get_db_connection():
 
         # Ensure text index exists for Keyword Search
         existing_indexes = collection.index_information()
-        text_index_exists = any(
-            "text" in idx.get("key", [("", "")])[0][1]
-            for idx in existing_indexes.values()
-            if "key" in idx
-        )
+        text_index_exists = False
+        for idx_info in existing_indexes.values():
+            key_tuples = idx_info.get("key", [])
+            if any(val == "text" for field_name, val in key_tuples):
+                text_index_exists = True
+                break
         
         if not text_index_exists:
             print("[INFO] Creating MongoDB Text Index on title, description, topic, and tags...")
