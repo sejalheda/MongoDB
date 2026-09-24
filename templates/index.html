@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Study Resource Finder - MongoDB Atlas Vector Search</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div>
+                    <h1>Smart Study Resource Finder</h1>
+                    <p class="subtitle">AI-Powered Semantic & Keyword Search powered by MongoDB Atlas Vector Search</p>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="openAddModalBtn">
+                <i class="fa-solid fa-plus"></i> Add Resource
+            </button>
+        </header>
+
+        <!-- Search & Filter Controls -->
+        <section class="controls-card">
+            <!-- Search Bar Row -->
+            <div class="search-row">
+                <div class="search-input-group">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Search by keywords or describe a concept in plain English (e.g. 'How do OS processes communicate?')...">
+                    <button class="btn btn-search" id="searchBtn">Search</button>
+                </div>
+            </div>
+
+            <!-- Options & Filters Row -->
+            <div class="filters-row">
+                <!-- Search Mode Toggle -->
+                <div class="mode-toggle-group">
+                    <label class="toggle-label">Search Mode:</label>
+                    <div class="segmented-control">
+                        <input type="radio" name="searchMode" id="modeSemantic" value="semantic" checked>
+                        <label for="modeSemantic" title="Uses AI Vector Embeddings to find semantically relevant study materials">
+                            <i class="fa-solid fa-sparkles"></i> Semantic AI Search
+                        </label>
+
+                        <input type="radio" name="searchMode" id="modeKeyword" value="keyword">
+                        <label for="modeKeyword" title="Uses MongoDB Text Index for exact keyword string matching">
+                            <i class="fa-solid fa-font"></i> Keyword Search
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Dropdown Filters -->
+                <div class="filter-dropdowns">
+                    <div class="select-wrapper">
+                        <select id="subjectFilter">
+                            <option value="">All Subjects</option>
+                        </select>
+                    </div>
+
+                    <div class="select-wrapper">
+                        <select id="difficultyFilter">
+                            <option value="">All Difficulties</option>
+                            <option value="Beginner">Beginner</option>
+                            <option value="Intermediate">Intermediate</option>
+                            <option value="Advanced">Advanced</option>
+                        </select>
+                    </div>
+
+                    <div class="select-wrapper">
+                        <select id="resourceTypeFilter">
+                            <option value="">All Types</option>
+                            <option value="Article">Article</option>
+                            <option value="Video">Video</option>
+                            <option value="Book">Book</option>
+                            <option value="Notes">Notes</option>
+                            <option value="Interactive">Interactive</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-secondary" id="resetFiltersBtn" title="Reset Filters">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Status Bar -->
+        <div class="status-bar">
+            <span id="resultsCount">Loading resources...</span>
+            <span id="searchBadge" class="badge badge-mode">Mode: Semantic AI</span>
+        </div>
+
+        <!-- Resources Grid -->
+        <main class="resources-grid" id="resourcesGrid">
+            <!-- Loading Skeleton Cards -->
+            <div class="loading-state">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                <p>Connecting to MongoDB Atlas...</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- ADD / EDIT RESOURCE MODAL -->
+    <div class="modal-overlay" id="resourceModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="modalTitle"><i class="fa-solid fa-folder-plus"></i> Add New Study Resource</h2>
+                <button class="close-btn" id="closeModalBtn">&times;</button>
+            </div>
+            <form id="resourceForm">
+                <input type="hidden" id="resourceId">
+                
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="title">Title <span class="required">*</span></label>
+                        <input type="text" id="title" required placeholder="e.g. Understanding Processes and Pipes in OS">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="subject">Subject <span class="required">*</span></label>
+                        <input type="text" id="subject" required placeholder="e.g. Operating Systems" list="subjectDatalist">
+                        <datalist id="subjectDatalist"></datalist>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topic">Topic <span class="required">*</span></label>
+                        <input type="text" id="topic" required placeholder="e.g. Inter-Process Communication">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="difficulty">Difficulty Level <span class="required">*</span></label>
+                        <select id="difficulty" required>
+                            <option value="Beginner">Beginner</option>
+                            <option value="Intermediate">Intermediate</option>
+                            <option value="Advanced">Advanced</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="resourceType">Resource Format <span class="required">*</span></label>
+                        <select id="resourceType" required>
+                            <option value="Article">Article</option>
+                            <option value="Video">Video</option>
+                            <option value="Book">Book</option>
+                            <option value="Notes">Notes</option>
+                            <option value="Interactive">Interactive</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="description">Summary Description <span class="required">*</span></label>
+                        <textarea id="description" rows="3" required placeholder="A clear breakdown of what this study material covers..."></textarea>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="content">Detailed Content / Key Highlights</label>
+                        <textarea id="content" rows="4" placeholder="Deep details or key excerpts used for generating high-accuracy AI embeddings..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tags">Tags (Comma-separated)</label>
+                        <input type="text" id="tags" placeholder="e.g. processes, pipes, ipc, linux">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="url">Resource Web Link (URL)</label>
+                        <input type="url" id="url" placeholder="https://example.com/study-material">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveResourceBtn">
+                        <i class="fa-solid fa-save"></i> Save Resource
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- VIEW RESOURCE DETAIL MODAL -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <div>
+                    <span id="detailSubject" class="badge badge-subject">Subject</span>
+                    <h2 id="detailTitle">Resource Title</h2>
+                </div>
+                <button class="close-btn" id="closeDetailModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-meta">
+                    <span id="detailDifficulty" class="badge badge-difficulty">Beginner</span>
+                    <span id="detailType" class="badge badge-type">Article</span>
+                    <span id="detailTopic" class="meta-item"><i class="fa-solid fa-bookmark"></i> Topic</span>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Summary</h3>
+                    <p id="detailDescription"></p>
+                </div>
+
+                <div class="detail-section" id="detailContentSection">
+                    <h3>Detailed Content</h3>
+                    <div id="detailContent" class="content-box"></div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Tags</h3>
+                    <div id="detailTags" class="tags-container"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="detailUrlBtn" href="#" target="_blank" rel="noopener" class="btn btn-primary">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Resource URL
+                </a>
+                <button type="button" class="btn btn-secondary" id="closeDetailModalBtn2">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
